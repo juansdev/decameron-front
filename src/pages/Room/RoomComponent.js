@@ -7,14 +7,23 @@ import {
   updateFormData
 } from "../../assets/common/js/functions";
 import {Modal} from "bootstrap";
-import CrudTable from "../CRUDTable/CRUDTable";
+import CrudTable from "../../components/CRUDTable/CRUDTable";
 
-const RoomComponent = ({CSRF, apiUrl, view, municipal_hotel_id, setView}) => {
+const RoomComponent = ({
+                         data,
+                         setData,
+                         roomTypes,
+                         setRoomTypes,
+                         roomAccommodations,
+                         setRoomAccommodations,
+                         CSRF,
+                         apiUrl,
+                         view,
+                         municipal_hotel_id,
+                         setView
+                       }) => {
   const [titleSwal, setTitleSwal] = useState('');
   const [dataID, setDataID] = useState({});
-  const [data, setData] = useState([]);
-  const [roomTypes, setRoomTypes] = useState([]);
-  const [roomAccommodations, setRoomAccommodations] = useState([]);
   const [formData, setFormData] = useState({
     id: '',
     room_type_id: '',
@@ -30,12 +39,16 @@ const RoomComponent = ({CSRF, apiUrl, view, municipal_hotel_id, setView}) => {
     return await openSwal({titleSwal, callbackAPIs: [updateData], mode: 'loading'});
   };
   const listRoomTypes = async () => {
-    const response = await consumeAPI(CSRF, `${apiUrl}/api/room-types`, 'GET');
-    setRoomTypes(response.data);
+    if (!roomTypes.length) {
+      const response = await consumeAPI(CSRF, `${apiUrl}/api/room-types`, 'GET');
+      setRoomTypes(response.data);
+    }
   };
   const listRoomAccommodations = async () => {
-    const response = await consumeAPI(CSRF, `${apiUrl}/api/room-accommodations`, 'GET');
-    setRoomAccommodations(response.data);
+    if (!roomAccommodations.length) {
+      const response = await consumeAPI(CSRF, `${apiUrl}/api/room-accommodations`, 'GET');
+      setRoomAccommodations(response.data);
+    }
   };
 
   const updateRoom = async (method, id = undefined) => {
@@ -67,7 +80,8 @@ const RoomComponent = ({CSRF, apiUrl, view, municipal_hotel_id, setView}) => {
   };
 
   useEffect(() => {
-    setTitleSwal('Cargando los datos...');
+    if ((!data.length || (data.length && data[0]['municipal_hotel_id'] !== municipal_hotel_id)))
+      setTitleSwal('Cargando los datos...');
   }, []);
   useEffect(() => {
     if (titleSwal === 'Cargando los datos...') listRoomTypes().then(async () => listRoomAccommodations().then(async () => {

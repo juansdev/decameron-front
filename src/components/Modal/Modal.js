@@ -113,7 +113,7 @@ const Modal = ({
                 </div>
                 <div className="mb-3">
                   <label htmlFor="number_rooms" className="form-label">
-                    Número de habitaciones
+                    Máximo de habitaciones
                   </label>
                   <input
                     type="text"

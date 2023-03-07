@@ -29,7 +29,7 @@ const CrudTable = ({
             <th scope="col">Municipio</th>
             <th scope="col">NIT</th>
             <th scope="col">Dirección</th>
-            <th scope="col">Cantidad de habitaciones</th>
+            <th scope="col">Máximo de habitaciones</th>
             <th scope="col">Acciones</th>
           </tr>
           </thead>

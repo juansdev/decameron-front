@@ -41,8 +41,9 @@ export const openSwal = async ({titleSwal, callbackAPIs, mode, response, showOnl
       options['title'] = '¡Error del servidor!';
       options['icon'] = 'error';
     }
-    if ((showOnlyError && !successStatus) || !showOnlyError) return await MySwal.fire(options).then(() => options['icon']);
-    else return options['icon'];
+    if (showOnlyError && !successStatus) return await MySwal.fire(options).then(() => options['icon']);
+    else if (showOnlyError && successStatus) return options['icon'];
+    else return await MySwal.fire(options).then(() => options['icon']);
   }
 }
 

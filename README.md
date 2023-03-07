@@ -4,11 +4,11 @@ Antes de desplegar el Frontend:
 
 Para desplegar el Frontend se debe hacer lo siguiente:
 
-1. Abrir la consola CMD, ubicarse en la raíz del proyecto y ejecutar los siguientes comandos como administrador:
+1. Abrir la consola CMD, ubicarse en la raíz del proyecto y ejecutar el siguiente comando como administrador:
 
 - npm install
 
-2. Clonar el .env.example, cambiar el nombre de la nueva copia a .env y actualizar los siguientes valores:
+2. Clonar el .env.example, cambiar el nombre de la nueva copia a .env y actualizar el siguiente valor:
 
 - REACT_APP_API_URL=http://localhost:8000 -> Dominio del Host y puerto en el que se encuentra desplegado el Backend
 

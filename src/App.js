@@ -8,7 +8,7 @@ import {
   removeBugModals,
   updateFormData
 } from "./assets/common/js/functions";
-import RoomComponent from "./components/Habitacion/RoomComponent";
+import RoomComponent from "./pages/Room/RoomComponent";
 
 function App() {
   const apiUrl = process.env.REACT_APP_API_URL;
@@ -18,6 +18,9 @@ function App() {
   const [titleSwal, setTitleSwal] = useState('');
   const [dataIDS, setDataIDS] = useState({});
   const [data, setData] = useState([]);
+  const [roomData, setRoomData] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
+  const [roomAccommodations, setRoomAccommodations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [formData, setFormData] = useState({
@@ -58,6 +61,10 @@ function App() {
       errors.address = "La dirección es obligatoria";
     if (formData.number_rooms === '')
       errors.number_rooms = "El número de habitaciones es obligatorio";
+    if (formData.number_rooms < 1)
+      errors.number_rooms = "El mínimo de habitaciones es de 1";
+    if (formData.number_rooms > 7)
+      errors.number_rooms = "El máximo de habitaciones es de 7";
     if (Object.keys(errors).length !== 0) {
       const response = {
         message: Object.values(errors).reduce((message, currentMessage) => message + `<div>${currentMessage}</div>`, ''),
@@ -137,7 +144,7 @@ function App() {
         const changeStatusMunicipalHotel = async () => await consumeAPI(CSRF, `${apiUrl}/municipal-hotels/${id}/status`, 'PUT');
         const changeStatusAndVerifyStatus = async () => await changeStatusHotel().then(response => openSwalVerifyStatus(response, true).then(async (statusResponse) => {
           if (statusResponse === 'success')
-            await changeStatusMunicipalHotel().then(() => openSwalVerifyStatus(response));
+            await changeStatusMunicipalHotel().then(response => openSwalVerifyStatus(response));
           setTitleSwal('Cargando los nuevos datos...');
         }));
         openSwal({titleSwal, callbackAPIs: [changeStatusAndVerifyStatus], mode: 'loading'});
@@ -178,7 +185,9 @@ function App() {
                      setDataIDS={setDataIDS}></CrudTable>
         </> :
         <RoomComponent CSRF={CSRF} apiUrl={apiUrl} view={view} municipalHotels={data}
-                       municipal_hotel_id={dataIDS['id']} setView={setView}></RoomComponent>}
+                       municipal_hotel_id={dataIDS['id']} setView={setView} data={roomData} setData={setRoomData}
+                       roomTypes={roomTypes} setRoomTypes={setRoomTypes} roomAccommodations={roomAccommodations}
+                       setRoomAccommodations={setRoomAccommodations}></RoomComponent>}
     </>
   );
 }
