@@ -3,13 +3,12 @@ import React from 'react';
 const Modal = ({modalId, item, handleFormChange, handleUpdate, departments, municipalities}) => {
   if (item.department_id !== '' && !municipalities.length)
     handleFormChange({target: {name: 'department_id', value: item.department_id}});
-
   return (
     <div
       className="modal fade"
-      id={`${modalId}${item.id ? `-${item.id}` : ''}`}
+      id={modalId}
       tabIndex="-1"
-      aria-labelledby={`${modalId}Label${item.id ? `-${item.id}` : ''}`}
+      aria-labelledby={`${modalId}Label`}
       aria-hidden="true"
     >
       <div className="modal-dialog">
@@ -17,7 +16,7 @@ const Modal = ({modalId, item, handleFormChange, handleUpdate, departments, muni
           <div className="modal-header">
             <h5
               className="modal-title"
-              id={`${modalId}Label${item.id ? `-${item.id}` : ''}`}
+              id={`${modalId}Label`}
             >
               {modalId === 'updateModal' ? 'Actualizar' : 'Crear'} Hotel
             </h5>
@@ -103,7 +102,7 @@ const Modal = ({modalId, item, handleFormChange, handleUpdate, departments, muni
               </div>
               <div className="mb-3">
                 <label htmlFor="number_rooms" className="form-label">
-                  Máximo de habitaciones
+                  Número de habitaciones
                 </label>
                 <input
                   type="text"
@@ -136,8 +135,7 @@ const Modal = ({modalId, item, handleFormChange, handleUpdate, departments, muni
           </div>
         </div>
       </div>
-    </div>
-  )
+    </div>);
 };
 
 export default Modal;

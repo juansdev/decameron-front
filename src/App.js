@@ -1,14 +1,15 @@
 import React, {useEffect, useState} from "react";
-import Modal from './components/Modal/Modal';
-import Swal from 'sweetalert2'
-import withReactContent from 'sweetalert2-react-content'
+import ModalComponent from './components/Modal/Modal';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+import {Modal} from 'bootstrap';
 
 function App() {
-  const MySwal = withReactContent(Swal)
   const apiUrl = process.env.REACT_APP_API_URL;
-  const [dataIds, setDataIDS] = useState({});
-  const [titleSwal, setTitleSwal] = useState('');
+  const MySwal = withReactContent(Swal);
   const [CSRF, setCSRF] = useState('');
+  const [titleSwal, setTitleSwal] = useState('');
+  const [dataIds, setDataIDS] = useState({});
   const [data, setData] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
@@ -23,14 +24,52 @@ function App() {
     number_rooms: ''
   });
 
-  const openSwal = async (callbackAPIs) => await MySwal.fire({
-    title: titleSwal,
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    didOpen: async () => {
-      MySwal.showLoading();
-      return await Promise.all(callbackAPIs.map(async (callbackAPI, index) => await callbackAPI())).then(() => MySwal.close());
+  const removeBugModals = () => {
+    for (const elementBackDrop of document.getElementsByClassName('modal-backdrop')) {
+      elementBackDrop.remove();
     }
+  };
+  const openSwal = async ({callbackAPIs, mode, response, showOnlyError}) => {
+    if (mode === 'loading') return await MySwal.fire({
+      title: titleSwal,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: async () => {
+        MySwal.showLoading();
+        return await Promise.all(callbackAPIs.map(async (callbackAPI) => await callbackAPI())).then(() => MySwal.close());
+      }
+    });
+    else if (mode === 'verifyStatus' && (response && response.message)) {
+      const options = {
+        html: response.errors ? Object.values(response.errors).reduce((errors, currentError) => errors + currentError.reduce((specificErrors, currentSpecificError) => specificErrors + `<div>${currentSpecificError}</div>`, ''), '') : response.message,
+        confirmButtonText: 'Aceptar'
+      };
+      let successStatus = false;
+      if (response.status >= 100 && response.status <= 199) {
+        successStatus = true;
+        options['title'] = 'Información';
+        options['icon'] = 'info';
+      } else if (response.status >= 200 && response.status <= 299) {
+        successStatus = true;
+        options['title'] = '¡Éxito!';
+        options['icon'] = 'success';
+      } else if (response.status >= 400 && response.status <= 499) {
+        successStatus = false;
+        options['title'] = '¡Error!';
+        options['icon'] = 'error';
+      } else if (response.status >= 500 && response.status <= 599) {
+        successStatus = false;
+        options['title'] = '¡Error del servidor!';
+        options['icon'] = 'error';
+      }
+      if ((showOnlyError && !successStatus) || !showOnlyError) return await MySwal.fire(options).then(() => options['icon']);
+      else return options['icon'];
+    }
+  }
+  const openSwalVerifyStatus = (response, showOnlyError = false) => openSwal({
+    response,
+    showOnlyError,
+    mode: 'verifyStatus'
   });
   const consumeAPI = async (url, method, data = undefined) => {
     const init = {
@@ -54,7 +93,7 @@ function App() {
       setData(response.data);
       return response;
     };
-    return await openSwal([updateData]);
+    return await openSwal({callbackAPIs: [updateData], mode: 'loading'});
   };
   const listDepartments = async () => {
     const response = await consumeAPI(`${apiUrl}/api/departments`, 'GET');
@@ -63,42 +102,48 @@ function App() {
 
   const updateFormData = ({key, value, resetData}) => {
     const updateFormData = JSON.parse(JSON.stringify(formData));
-    if (key && value && updateFormData[key] !== value)
+    if (key && value !== undefined && updateFormData[key] !== value)
       updateFormData[key] = value;
-    else if (resetData)
+    else if (resetData) {
       for (const key in formData) {
         updateFormData[key] = '';
       }
+      setMunicipalities([]);
+    }
     setFormData(updateFormData);
   };
   const updateMunicipalHotelAndHotel = async (method, id = undefined, hotel_id = undefined) => {
     const errors = {};
     if (!formData.name.trim())
-      errors.name = "El nombre es requerido";
+      errors.name = "El nombre es obligatorio";
     if (!formData.nit.trim())
-      errors.nit = "El NIT es requerido";
+      errors.nit = "El NIT es obligatorio";
     if (formData.department_id === '')
-      errors.department_id = "El departamento es requerido";
+      errors.department_id = "El departamento es obligatorio";
     if (formData.municipality_id === '')
-      errors.municipality_id = "El municipio es requerido";
-    if (Object.keys(errors).length !== 0) alert(Object.values(errors).join('\n'));
-    else {
-      const {name, nit, address, number_rooms, municipality_id} = formData;
-      let data = {
-        name,
-        nit
+      errors.municipality_id = "El municipio es obligatorio";
+    if (formData.address === '')
+      errors.address = "La dirección es obligatoria";
+    if (formData.number_rooms === '')
+      errors.number_rooms = "El número de habitaciones es obligatorio";
+    if (Object.keys(errors).length !== 0) {
+      const response = {
+        message: Object.values(errors).reduce((message, currentMessage) => message + `<div>${currentMessage}</div>`, ''),
+        status: 400
       };
-      await consumeAPI(`${apiUrl}/hotels` + (method === 'PUT' ? `/${hotel_id}` : ''), method, data).then(async (res) => {
-        data = {'hotel_id': res.data.id, municipality_id, address, number_rooms};
-      }).then(async () => await consumeAPI(`${apiUrl}/municipal-hotels` + (method === 'PUT' ? `/${id}` : ''), method, data).then(() => updateFormData({resetData: true})));
-      setTitleSwal('Cargando los nuevos datos...');
+      await openSwalVerifyStatus(response);
+    } else {
+      setDataIDS({id, hotel_id});
+      setTitleSwal((method === 'PUT' ? 'Actualizando' : 'Agregando') + ' los datos del Hotel');
     }
   };
   const handleFormChange = async (event) => {
     const {name, value} = event.target;
     if (name === 'department_id' && (formData.department_id !== value || !municipalities.length)) {
-      const response = await consumeAPI(`${apiUrl}/api/municipalities?department_id=${value}`, 'GET');
-      setMunicipalities(response.data);
+      if (value) {
+        const response = await consumeAPI(`${apiUrl}/api/municipalities?department_id=${value}`, 'GET');
+        setMunicipalities(response.data);
+      } else setMunicipalities([]);
     }
     updateFormData({key: name, value});
   };
@@ -119,53 +164,74 @@ function App() {
         setCSRF(csrf);
         setTitleSwal('Cargando los datos...');
       });
-      openSwal([getCSRF]);
-    } else if (titleSwal === 'Cargando los datos...') {
-      listDepartments().then(async () => {
-        await fetchData();
-        setTitleSwal('');
-      });
-    } else if (titleSwal === 'Actualizando el estado del Hotel...' && Object.keys(dataIds).length) {
+      openSwal({callbackAPIs: [getCSRF], mode: 'loading'});
+    } else if (titleSwal === 'Cargando los datos...') listDepartments().then(async () => {
+      await fetchData();
+      setTitleSwal('');
+    })
+    else if (Object.keys(dataIds).length && ['Actualizando los datos del Hotel', 'Agregando los datos del Hotel', 'Actualizando el estado del Hotel...'].includes(titleSwal)) {
       const {id, hotel_id} = dataIds;
-      const changeStatusHotel = async () => await consumeAPI(`${apiUrl}/hotels/${hotel_id}/status`, 'PUT');
-      const changeStatusMunicipalHotel = async () => await consumeAPI(`${apiUrl}/municipal-hotels/${id}/status`, 'PUT');
-      const verifyStatus = async (res, showOnlyError = false) => {
-        if (res && res.message) {
-          if (res.status >= 100 && res.status <= 199 && !showOnlyError)
-            return await MySwal.fire('Información', res.message, 'info');
-          else if (res.status >= 200 && res.status <= 299 && !showOnlyError)
-            return await MySwal.fire('¡Éxito!', res.message, 'success');
-          else if (res.status >= 400 && res.status <= 499 && !showOnlyError)
-            return await MySwal.fire('¡Error!', res.message, 'error');
-          else if (res.status >= 500 && res.status <= 599)
-            return await MySwal.fire('¡Error del servidor!', res.message, 'error');
-        }
+      if (['Actualizando los datos del Hotel', 'Agregando los datos del Hotel'].includes(titleSwal)) {
+        const {name, nit, address, number_rooms, municipality_id} = formData;
+        let data = {
+          name,
+          nit
+        };
+        const method = titleSwal === 'Actualizando los datos del Hotel' ? 'PUT' : 'POST';
+        const createOrUpdateHotel = async () => await consumeAPI(`${apiUrl}/hotels` + (method === 'PUT' ? `/${hotel_id}` : ''), method, data).then((response) => openSwalVerifyStatus(response, true).then(async (statusResponse) => {
+          if (statusResponse === 'success') {
+            data = {'hotel_id': response['data'].id, municipality_id, address, number_rooms};
+            await consumeAPI(`${apiUrl}/municipal-hotels` + (method === 'PUT' ? `/${id}` : ''), method, data).then((response) => openSwalVerifyStatus(response).then((statusResponse) => {
+              if (statusResponse === 'success') {
+                updateFormData({resetData: true});
+                const modalId = method === 'PUT' ? 'updateModal' : 'submitModal';
+                const myModalEl = document.getElementById(modalId);
+                const myModal = Modal.getInstance(myModalEl);
+                myModal.hide();
+                removeBugModals();
+              }
+            }));
+          }
+          setTitleSwal('Cargando los nuevos datos...');
+        }));
+        openSwal({callbackAPIs: [createOrUpdateHotel], mode: 'loading'});
+      } else if (titleSwal === 'Actualizando el estado del Hotel...') {
+        const changeStatusHotel = async () => await consumeAPI(`${apiUrl}/hotels/${hotel_id}/status`, 'PUT');
+        const changeStatusMunicipalHotel = async () => await consumeAPI(`${apiUrl}/municipal-hotels/${id}/status`, 'PUT');
+        const changeStatusAndVerifyStatus = async () => await changeStatusHotel().then(response => openSwalVerifyStatus(response, true).then(async (statusResponse) => {
+          if (statusResponse === 'success')
+            await changeStatusMunicipalHotel().then(() => openSwalVerifyStatus(response));
+          setTitleSwal('Cargando los nuevos datos...');
+        }));
+        openSwal({callbackAPIs: [changeStatusAndVerifyStatus], mode: 'loading'});
       }
-      const loadNewData = () => {
-        setDataIDS({});
-        setTitleSwal('Cargando los nuevos datos...');
-      };
-      const changeStatusAndVerifyStatus = async () => changeStatusHotel().then(res => verifyStatus(res, true).then(() => changeStatusMunicipalHotel().then(() => verifyStatus(res).then(() => loadNewData()))));
-      openSwal([changeStatusAndVerifyStatus,]);
-    } else if (titleSwal === 'Cargando los nuevos datos...') fetchData().then(() => setTitleSwal(''));
+    } else if (titleSwal === 'Cargando los nuevos datos...') fetchData().then(() => {
+      setDataIDS({});
+      setTitleSwal('');
+    });
   }, [titleSwal, dataIds]);
 
   return (
     <>
       <nav className="navbar navbar-expand-lg container">
         <div className="container-fluid">
-          <a className="navbar-brand" href="#">Hoteles Decameron</a>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse"
-                  data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
-                  aria-label="Toggle navigation">
-            <span className="navbar-toggler-icon"></span>
+          <a className="navbar-brand" href="#">Decameron</a>
+          <button type="button" data-bs-target={`#submitModal`} onClick={() => {
+            setFormData({
+              id: '',
+              name: '',
+              nit: '',
+              hotel_id: '',
+              department_id: '',
+              municipality_id: '',
+              address: '',
+              number_rooms: ''
+            });
+            removeBugModals();
+          }
+          } className="btn btn-primary ms-auto d-block w-25 fw-bold text-uppercase"
+                  data-bs-toggle="modal">Crear Hotel
           </button>
-          <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            <button type="button" className="btn btn-primary ms-auto d-block w-25 fw-bold text-uppercase"
-                    data-bs-toggle="modal"
-                    data-bs-target={`#submitModal`}>Crear Hotel
-            </button>
-          </div>
         </div>
       </nav>
       <div className="container-fluid container-md mt-3 table-responsive">
@@ -175,6 +241,7 @@ function App() {
           <tr>
             <th scope="col">Hotel</th>
             <th scope="col">Municipio</th>
+            <th scope="col">NIT</th>
             <th scope="col">Dirección</th>
             <th scope="col">Cantidad de habitaciones</th>
             <th scope="col">Acciones</th>
@@ -185,6 +252,7 @@ function App() {
             <tr key={item.id}>
               <th scope="row">{item['hotel'].name}</th>
               <td>{item['municipality'].name}</td>
+              <td>{item['hotel'].nit}</td>
               <td>{item.address}</td>
               <td>{item.number_rooms}</td>
               <td>
@@ -204,6 +272,7 @@ function App() {
                         data-bs-toggle="modal"
                         data-bs-target={`#updateModal`} onClick={() => {
                         setFormData({
+                          id: item.id,
                           name: item['hotel']?.name,
                           nit: item['hotel']?.nit,
                           hotel_id: item.hotel_id,
@@ -217,7 +286,7 @@ function App() {
                       >
                         <i className="bi bi-pencil-fill"></i>
                       </button>
-                      <Modal
+                      <ModalComponent
                         modalId={'updateModal'}
                         item={formData}
                         handleFormChange={handleFormChange}
@@ -231,7 +300,7 @@ function App() {
             </tr>))}
           </tbody>
         </table>
-        <Modal
+        <ModalComponent
           modalId={'submitModal'}
           item={formData}
           handleFormChange={handleFormChange}
