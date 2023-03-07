@@ -72,6 +72,14 @@ const CrudTable = ({
                       >
                         <i className="bi bi-pencil-fill"></i>
                       </button>
+                      <button
+                        className="btn btn-success d-block fw-bold text-uppercase" onClick={() => {
+                        setDataIDS({id: item.id, hotel_id: item.hotel_id});
+                        setView('rooms');
+                      }}
+                      >
+                        Listar las habitaciones del Hotel
+                      </button>
                       <ModalComponent
                         modalID={'updateModal'}
                         item={formData}
@@ -81,14 +89,6 @@ const CrudTable = ({
                         municipalities={municipalities}
                       />
                     </> : ''}
-                  <button
-                    className="btn btn-success d-block fw-bold text-uppercase" onClick={() => {
-                    setDataIDS({id: item.id, hotel_id: item.hotel_id});
-                    setView('rooms');
-                  }}
-                  >
-                    Listar las habitaciones del Hotel
-                  </button>
                 </div>
               </td>
             </tr>))}
